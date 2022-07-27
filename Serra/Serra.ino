@@ -10,8 +10,16 @@ DHT dht(tempPin, DHTTYPE); //inizializzo il sensore di temperatura
 /** ===================================================
  * Le seguenti linee di codice servono per configurare il display OLED i2c
  */
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 #define OLED_RESET  -1   
 #define SCREEN_ADDRESS 0x3c
+#define SCREEN_WIDTH 128 
+#define SCREEN_HEIGHT 64 
+// Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+String displayString;
 
 /** ===================================================
  * Le seguenti linee di codice servono per configurare i led e la libreria per poterlo
@@ -41,7 +49,13 @@ void LEDSetup(){
 }
 
 void displaySetup(){
-
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) 
+    Serial.println(F("SSD1306 allocation failed"));
+  display.clearDisplay();
+  display.setTextSize(2);
+  display.setTextColor(WHITE);
+  display.setCursor(0, 10);
+  displayString.reserve(20); //senza questa riga il buffer ha problemi(?)
 }
 
 //* ==================== Funzioni =============================== */
@@ -58,20 +72,37 @@ void setLed(const struct CRGB color){
   
 }
 
+void getTemperature(){
+   int16_t x1;
+  int16_t y1;
+  uint16_t width;
+  uint16_t height;
+  displayString = "TEMP:" + String(dht.readTemperature(), 1) + "C";
+
+  //Trovo la grandezza della stringa
+  display.getTextBounds(displayString, 0, 0, &x1, &y1, &width, &height);
+  display.clearDisplay(); 
+  display.setCursor((SCREEN_WIDTH - width) / 2, (SCREEN_HEIGHT - height) / 2);
+  display.println(displayString);
+  Serial.println(displayString);
+  display.display();
+}
+
 /** ============================================================= */
 void setup(){
 	 Serial.begin(115200);
    dht.begin();
    LEDSetup();
-   
+   displaySetup();
    pinMode(fanPin, OUTPUT);
    
 }
 
 void loop(){
-	Serial.print("LEggo temperature ");
-  Serial.println(dht.readTemperature());
-  //Serial.println(readTemperature());
-	delay(100);
-  setLed(CRGB::Blue);
+  getTemperature();
+  delay(2000);
+  setLed(CRGB::White);
+  digitalWrite(fanPin, HIGH);
+  delay(2000);
+  //digitalWrite(fanPin, LOW);
 }
